@@ -3,16 +3,21 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JInternalFrame.java to edit this template
  */
 package sistemagerenciador.telas;
+import java.sql.ResultSet;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import sistemagerenciador.dal.ConexaoBD;
 /**
@@ -45,8 +50,15 @@ public class uTelaIntegracaoDadosCSV extends javax.swing.JInternalFrame {
         setClosable(true);
         setIconifiable(true);
         setMaximizable(true);
+        setTitle("Integração de dados CSV");
+        setName("fmIntegracaoCSV"); // NOI18N
 
         btExporta.setText("Exportar");
+        btExporta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btExportaActionPerformed(evt);
+            }
+        });
 
         btImporta.setText("Importar");
         btImporta.addActionListener(new java.awt.event.ActionListener() {
@@ -96,9 +108,13 @@ public class uTelaIntegracaoDadosCSV extends javax.swing.JInternalFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btImportaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btImportaActionPerformed
-        String filePath = "C:\\Users\\giorg\\tabela.csv";
-        File fileCSV = new File(filePath);
-        
+        String path = "";
+        try {
+            path = new File(".").getCanonicalPath();
+        } catch (Exception e) {
+            Logger.getLogger(uTelaIntegracaoDadosCSV.class.getName()).log(Level.SEVERE, null, e);          
+        }
+        File fileCSV = new File(path+"/tabela.csv");
         try {
             // Abre o arquivo CSV para leitura
             BufferedReader br = new BufferedReader(new FileReader(fileCSV));
@@ -122,11 +138,52 @@ public class uTelaIntegracaoDadosCSV extends javax.swing.JInternalFrame {
                 // Chama a função para inserir os dados no banco de dados
                 insertDataBase(dataRow);
             }
+            JOptionPane.showMessageDialog(null, "Importado com sucesso!");
             br.close();
         } catch (Exception e) {
             Logger.getLogger(uTelaIntegracaoDadosCSV.class.getName()).log(Level.SEVERE, null, e);
         }
     }//GEN-LAST:event_btImportaActionPerformed
+
+    private void btExportaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btExportaActionPerformed
+        String path = "";
+        try {
+            path = new File(".").getCanonicalPath();
+        } catch (Exception e) {
+            Logger.getLogger(uTelaIntegracaoDadosCSV.class.getName()).log(Level.SEVERE, null, e);          
+        }
+        File fileCSV = new File(path+"/tabela.csv");
+        try {
+            FileWriter fw = new FileWriter(fileCSV);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            Connection conexao = ConexaoBD.conector(); 
+            if (conexao == null) {
+                System.err.println("Erro ao conectar ao banco de dados");
+                return;
+            }
+
+            PreparedStatement pst = conexao.prepareStatement("SELECT * FROM TDADOS");
+            ResultSet rs = pst.executeQuery();
+
+            // Escreve os dados no arquivo CSV
+            while (rs.next()) {
+                // Recupera os valores de cada coluna do resultado da consulta
+                for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++) {
+                    bw.write(rs.getString(i) + ", ");
+                }
+                bw.newLine();
+            }
+
+            JOptionPane.showMessageDialog(null, "Exportado com sucesso!");
+            bw.close();
+            fw.close();
+            pst.close();
+            conexao.close(); 
+        } catch (IOException | SQLException e) {
+            Logger.getLogger(uTelaIntegracaoDadosCSV.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }//GEN-LAST:event_btExportaActionPerformed
  
     //Método para inserção no banco de dados
     private void insertDataBase(String[] dataRow) {
@@ -138,7 +195,7 @@ public class uTelaIntegracaoDadosCSV extends javax.swing.JInternalFrame {
                 return;
             }
 
-            PreparedStatement pst = conexao.prepareStatement("INSERT INTO TDADOS_CSV (TCOD_DADO, TCATEGORIA_DADO, TGENERO_DADO, TPARTICIPANTE_DADO, TMIDIA_DADO, TTIPO_MIDIA_DADO, TCLASSIFICACAO_DADO) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            PreparedStatement pst = conexao.prepareStatement("INSERT INTO TDADOS (TCOD_DADO, TCATEGORIA_DADO, TGENERO_DADO, TPARTICIPANTE_DADO, TMIDIA_DADO, TTIPO_MIDIA_DADO, TCLASSIFICACAO_DADO) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
             //É posto valores aonde há "?"
             for(int i = 0; i < dataRow.length; i++) {

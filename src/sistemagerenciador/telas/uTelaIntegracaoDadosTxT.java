@@ -4,6 +4,26 @@
  */
 package sistemagerenciador.telas;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JOptionPane;
+import java.sql.ResultSet;
+ 
+import javax.swing.table.DefaultTableModel;
+ 
+import sistemagerenciador.dal.ConexaoBD;
+
 /**
  *
  * @author giorg
@@ -34,6 +54,8 @@ public class uTelaIntegracaoDadosTxT extends javax.swing.JInternalFrame {
         setClosable(true);
         setIconifiable(true);
         setMaximizable(true);
+        setTitle("Integração de dados TXT");
+        setName("fmIntegracaoTXT"); // NOI18N
 
         tbIntegracaoDadosTXT.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -46,8 +68,18 @@ public class uTelaIntegracaoDadosTxT extends javax.swing.JInternalFrame {
         jScrollPane1.setViewportView(tbIntegracaoDadosTXT);
 
         btImporta.setText("Importar");
+        btImporta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btImportaActionPerformed(evt);
+            }
+        });
 
         btExporta.setText("Exportar");
+        btExporta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btExportaActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -79,6 +111,136 @@ public class uTelaIntegracaoDadosTxT extends javax.swing.JInternalFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    private void btImportaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btImportaActionPerformed
+        String path = "";
+        try {
+            path = new File(".").getCanonicalPath();
+        } catch (Exception e) {
+            Logger.getLogger(uTelaIntegracaoDadosCSV.class.getName()).log(Level.SEVERE, null, e);          
+        }
+        File fileTXT = new File(path+"/tabela.txt");
+        try {
+            File f = new File(path+"/tabela.txt");
+            // Abre o arquivo CSV para leitura
+            BufferedReader br = new BufferedReader(new FileReader(fileTXT));
+            // Lê a primeira linha do arquivo CSV
+            // Lê as linhas restantes do arquivo e as armazena em um array de objetos
+            Object[] tableLines = br.lines().toArray();
+            String firstLine = tableLines[0].toString();
+            // Divide a primeira linha em nomes de colunas usando vírgula como delimitador
+            String[] columnsName = new String[7];
+            columnsName[0]= "ID";
+            columnsName[1]= "Categoria";
+            columnsName[2]= "Genero";
+            columnsName[3]= "Participante";
+            columnsName[4]= "Midia";
+            columnsName[5]= "Tipo Midia";
+            columnsName[6]= "Classificação";
+            // Obtém o modelo da tabela e define os nomes das colunas
+            DefaultTableModel model = (DefaultTableModel)tbIntegracaoDadosTXT.getModel();
+            model.setRowCount(0);
+            model.setColumnIdentifiers(columnsName);
+           
+            // Lê as linhas restantes do arquivo e as armazena em um array de objetos
+            //Object[] tableLines = br.lines().toArray();
+           
+            // Itera sobre as linhas e adiciona cada uma à tabela
+            for(int i = 0; i < tableLines.length; i++) {
+                String[] columnsName2 = new String[7];
+                columnsName2[0]= tableLines[i].toString().substring(0,5).trim();//TCOD_DADO INTEGER NOT NULL PRIMARY KEY,
+                columnsName2[1]= tableLines[i].toString().substring(6,105).trim();//TCATEGORIA_DADO VARCHAR(100),
+                columnsName2[2]= tableLines[i].toString().substring(106,205).trim();// TGENERO_DADO VARCHAR(100),
+                columnsName2[3]= tableLines[i].toString().substring(206,305).trim();//TPARTICIPANTE_DADO VARCHAR(100),
+                columnsName2[4]= tableLines[i].toString().substring(306,405).trim();//TMIDIA_DADO VARCHAR(100),
+                columnsName2[5]= tableLines[i].toString().substring(406,455).trim();//TTIPO_MIDIA_DADO VARCHAR(50),
+                columnsName2[6]= tableLines[i].toString().substring(456,505).trim();//TCLASSIFICACAO_DADO VARCHAR(50)
+                model.addRow(columnsName2);
+           
+                // Chama a função para inserir os dados no banco de dados
+                insertDataBase(columnsName2);
+            }
+            JOptionPane.showMessageDialog(null, "Importado com sucesso!");
+            br.close();
+        } catch (Exception e) {
+            Logger.getLogger(uTelaIntegracaoDadosCSV.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }//GEN-LAST:event_btImportaActionPerformed
+
+    private void btExportaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btExportaActionPerformed
+        String path = "";
+        try {
+            path = new File(".").getCanonicalPath();
+        } catch (Exception e) {
+            Logger.getLogger(uTelaIntegracaoDadosCSV.class.getName()).log(Level.SEVERE, null, e);          
+        }
+        File fileTXT = new File(path+"/tabela.txt");
+        try {
+            FileWriter fw = new FileWriter(fileTXT);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            Connection conexao = ConexaoBD.conector(); 
+            if (conexao == null) {
+                System.err.println("Erro ao conectar ao banco de dados");
+                return;
+            }
+
+            PreparedStatement pst = conexao.prepareStatement("SELECT * FROM TDADOS");
+            ResultSet rs = pst.executeQuery();
+
+            // Escreve os dados no arquivo CSV
+            while (rs.next()) {
+                // Recupera os valores de cada coluna do resultado da consulta
+                    char[] id = new char[5];
+                    id = rs.getString(0).toCharArray();
+                    char[] categoria = new char[100];
+                    categoria = rs.getString(1).toCharArray();
+                    char[] genero = new char[100];
+                    genero = rs.getString(2).toCharArray();
+                    char[] participante = new char[100];
+                    participante= rs.getString(3).toCharArray();
+                    char[] midia = new char[100];
+                    midia= rs.getString(4).toCharArray();
+                    char[] tipoMidia = new char[50];
+                    tipoMidia= rs.getString(5).toCharArray();
+                    char[] classificacao = new char[50];
+                    classificacao= rs.getString(6).toCharArray();
+                    bw.write(id.toString()+categoria+toString()+genero.toString()+participante.toString()+midia.toString()+tipoMidia.toString()+classificacao.toString());
+                bw.newLine();
+            }
+
+            JOptionPane.showMessageDialog(null, "Exportado com sucesso!");
+            bw.close();
+            fw.close();
+            pst.close();
+            conexao.close(); 
+        } catch (IOException | SQLException e) {
+            Logger.getLogger(uTelaIntegracaoDadosCSV.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }//GEN-LAST:event_btExportaActionPerformed
+    
+    private void insertDataBase(String[] dataRow) {
+        try {
+            Connection conexao = ConexaoBD.conector();
+ 
+            if (conexao == null) {
+                System.err.println("Erro ao conectar ao banco de dados");
+                return;
+            }
+ 
+            PreparedStatement pst = conexao.prepareStatement("INSERT INTO TDADOS (TCOD_DADO, TCATEGORIA_DADO, TGENERO_DADO, TPARTICIPANTE_DADO, TMIDIA_DADO, TTIPO_MIDIA_DADO, TCLASSIFICACAO_DADO) VALUES (?, ?, ?, ?, ?, ?, ?)");
+ 
+            //É posto valores aonde há "?"
+            for(int i = 0; i < dataRow.length; i++) {
+                pst.setString(i + 1, dataRow[i]);
+            }
+ 
+            pst.executeUpdate();
+            pst.close();
+            conexao.close();
+        } catch (SQLException e) {
+            Logger.getLogger(uTelaIntegracaoDadosCSV.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btExporta;

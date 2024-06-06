@@ -8,7 +8,7 @@ public class ConexaoBD {
         
         String wDriver = "com.mysql.cj.jdbc.Driver";
 
-       String wURL = "jdbc:mysql://localhost:3306/arqs_integracaodados";
+       String wURL = "jdbc:mysql://localhost:3306/legado";
         String wUser = "root";
         String wPassword = "root";
 
